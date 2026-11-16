@@ -15,14 +15,13 @@ import time
 
 URL_CNN = "https://www.cnnbrasil.com.br/sitemap-news.xml"
 
-# Horario de Brasilia
+# Horario de Brasilia - UTC-3
 FUSO_BRASIL = timezone(
     timedelta(hours=-3)
 )
 
-# O GitHub Actions vai publicar esta pasta como Artifact.
+# O arquivo sera sempre gravado neste mesmo local.
 PASTA_RESULTADOS = "resultados"
-
 NOME_ARQUIVO_JSON = "resultado_cnn.json"
 
 NAMESPACES = {
@@ -93,7 +92,7 @@ TEMAS = {
 
 
 # ================================================================
-# NORMALIZAR TEXTO
+# NORMALIZACAO
 # ================================================================
 
 def normalizar_texto(texto):
@@ -118,7 +117,7 @@ def normalizar_texto(texto):
 
 
 # ================================================================
-# CLASSIFICAR NOTICIA
+# CLASSIFICACAO
 # ================================================================
 
 def classificar_noticia(
@@ -149,11 +148,13 @@ def classificar_noticia(
                 encontrou_tema = True
 
                 if palavra not in palavras_encontradas:
+
                     palavras_encontradas.append(
                         palavra
                     )
 
         if encontrou_tema:
+
             temas_encontrados.append(
                 tema
             )
@@ -165,7 +166,7 @@ def classificar_noticia(
 
 
 # ================================================================
-# LEITOR DE META TAGS
+# META TAGS
 # ================================================================
 
 class MetaParser(HTMLParser):
@@ -199,11 +200,12 @@ class MetaParser(HTMLParser):
         ).strip()
 
         if chave and conteudo:
+
             self.metadados[chave] = conteudo
 
 
 # ================================================================
-# LEITOR JSON-LD
+# JSON-LD
 # ================================================================
 
 class JSONLDParser(HTMLParser):
@@ -225,7 +227,9 @@ class JSONLDParser(HTMLParser):
         if tag.lower() != "script":
             return
 
-        atributos = dict(attrs)
+        atributos = dict(
+            attrs
+        )
 
         tipo = atributos.get(
             "type",
@@ -243,6 +247,7 @@ class JSONLDParser(HTMLParser):
     ):
 
         if self.capturando:
+
             self.conteudo_atual.append(
                 data
             )
@@ -262,6 +267,7 @@ class JSONLDParser(HTMLParser):
             ).strip()
 
             if conteudo:
+
                 self.blocos.append(
                     conteudo
                 )
@@ -271,7 +277,7 @@ class JSONLDParser(HTMLParser):
 
 
 # ================================================================
-# REQUISICOES HTTP
+# HTTP
 # ================================================================
 
 def fazer_requisicao(
@@ -303,36 +309,36 @@ def baixar_sitemap():
     except urllib.error.HTTPError as erro:
 
         print(
-            f"Erro HTTP ao acessar a CNN: "
-            f"{erro.code} - {erro.reason}"
+            "Erro HTTP:",
+            erro.code,
+            erro.reason
         )
 
     except urllib.error.URLError as erro:
 
         print(
-            "Erro de conexao ao acessar a CNN:"
+            "Erro de conexao:",
+            erro
         )
-
-        print(erro)
 
     except Exception as erro:
 
         print(
-            "Erro inesperado ao acessar a CNN:"
+            "Erro inesperado:",
+            erro
         )
-
-        print(erro)
 
     return None
 
 
 # ================================================================
-# FUNCOES AUXILIARES
+# AUXILIARES
 # ================================================================
 
 def obter_texto(elemento):
 
     if elemento is None:
+
         return ""
 
     return (
@@ -340,9 +346,12 @@ def obter_texto(elemento):
     ).strip()
 
 
-def formatar_data_iso(data_iso):
+def formatar_data_iso(
+    data_iso
+):
 
     if not data_iso:
+
         return "Nao informado"
 
     try:
@@ -363,12 +372,21 @@ def formatar_data_iso(data_iso):
         return data_iso
 
 
-def obter_nome_autor(autor):
+def obter_nome_autor(
+    autor
+):
 
-    if isinstance(autor, str):
+    if isinstance(
+        autor,
+        str
+    ):
+
         return autor.strip()
 
-    if isinstance(autor, dict):
+    if isinstance(
+        autor,
+        dict
+    ):
 
         return str(
             autor.get(
@@ -377,13 +395,19 @@ def obter_nome_autor(autor):
             )
         ).strip()
 
-    if isinstance(autor, list):
+    if isinstance(
+        autor,
+        list
+    ):
 
         nomes = []
 
         for pessoa in autor:
 
-            if isinstance(pessoa, dict):
+            if isinstance(
+                pessoa,
+                dict
+            ):
 
                 nome = str(
                     pessoa.get(
@@ -392,7 +416,10 @@ def obter_nome_autor(autor):
                     )
                 ).strip()
 
-            elif isinstance(pessoa, str):
+            elif isinstance(
+                pessoa,
+                str
+            ):
 
                 nome = pessoa.strip()
 
@@ -413,13 +440,21 @@ def obter_nome_autor(autor):
     return ""
 
 
-def obter_url_imagem(imagem):
+def obter_url_imagem(
+    imagem
+):
 
-    if isinstance(imagem, str):
+    if isinstance(
+        imagem,
+        str
+    ):
 
         return imagem.strip()
 
-    if isinstance(imagem, dict):
+    if isinstance(
+        imagem,
+        dict
+    ):
 
         return str(
             imagem.get(
@@ -428,14 +463,24 @@ def obter_url_imagem(imagem):
             )
         ).strip()
 
-    if isinstance(imagem, list) and imagem:
+    if isinstance(
+        imagem,
+        list
+    ) and imagem:
 
         primeira = imagem[0]
 
-        if isinstance(primeira, str):
+        if isinstance(
+            primeira,
+            str
+        ):
+
             return primeira.strip()
 
-        if isinstance(primeira, dict):
+        if isinstance(
+            primeira,
+            dict
+        ):
 
             return str(
                 primeira.get(
@@ -448,12 +493,17 @@ def obter_url_imagem(imagem):
 
 
 # ================================================================
-# LOCALIZAR ARTIGO NO JSON-LD
+# PROCURAR ARTIGO
 # ================================================================
 
-def procurar_artigo_json(dados):
+def procurar_artigo_json(
+    dados
+):
 
-    if isinstance(dados, list):
+    if isinstance(
+        dados,
+        list
+    ):
 
         for item in dados:
 
@@ -462,11 +512,16 @@ def procurar_artigo_json(dados):
             )
 
             if artigo:
+
                 return artigo
 
         return None
 
-    if not isinstance(dados, dict):
+    if not isinstance(
+        dados,
+        dict
+    ):
+
         return None
 
     tipo = dados.get(
@@ -474,7 +529,10 @@ def procurar_artigo_json(dados):
         ""
     )
 
-    if isinstance(tipo, list):
+    if isinstance(
+        tipo,
+        list
+    ):
 
         tipos = tipo
 
@@ -507,6 +565,7 @@ def procurar_artigo_json(dados):
         )
 
         if artigo:
+
             return artigo
 
     for valor in dados.values():
@@ -521,16 +580,19 @@ def procurar_artigo_json(dados):
             )
 
             if artigo:
+
                 return artigo
 
     return None
 
 
 # ================================================================
-# OBTER DETALHES DA NOTICIA
+# DETALHES DA NOTICIA
 # ================================================================
 
-def obter_detalhes_noticia(url):
+def obter_detalhes_noticia(
+    url
+):
 
     resultado = {
         "titulo": "",
@@ -557,15 +619,15 @@ def obter_detalhes_noticia(url):
 
     except Exception as erro:
 
-        resultado["erro"] = str(
+        resultado[
+            "erro"
+        ] = str(
             erro
         )
 
         return resultado
 
-    # ------------------------------------------------------------
     # META TAGS
-    # ------------------------------------------------------------
 
     parser_meta = MetaParser()
 
@@ -576,14 +638,29 @@ def obter_detalhes_noticia(url):
     metas = parser_meta.metadados
 
     resultado["titulo"] = (
-        metas.get("og:title", "")
-        or metas.get("twitter:title", "")
+        metas.get(
+            "og:title",
+            ""
+        )
+        or metas.get(
+            "twitter:title",
+            ""
+        )
     )
 
     resultado["descricao"] = (
-        metas.get("og:description", "")
-        or metas.get("description", "")
-        or metas.get("twitter:description", "")
+        metas.get(
+            "og:description",
+            ""
+        )
+        or metas.get(
+            "description",
+            ""
+        )
+        or metas.get(
+            "twitter:description",
+            ""
+        )
     )
 
     resultado["categoria"] = metas.get(
@@ -592,8 +669,14 @@ def obter_detalhes_noticia(url):
     )
 
     resultado["autor"] = (
-        metas.get("author", "")
-        or metas.get("article:author", "")
+        metas.get(
+            "author",
+            ""
+        )
+        or metas.get(
+            "article:author",
+            ""
+        )
     )
 
     resultado["publicado"] = metas.get(
@@ -607,13 +690,17 @@ def obter_detalhes_noticia(url):
     )
 
     resultado["imagem"] = (
-        metas.get("og:image", "")
-        or metas.get("twitter:image", "")
+        metas.get(
+            "og:image",
+            ""
+        )
+        or metas.get(
+            "twitter:image",
+            ""
+        )
     )
 
-    # ------------------------------------------------------------
     # JSON-LD
-    # ------------------------------------------------------------
 
     parser_json = JSONLDParser()
 
@@ -641,51 +728,86 @@ def obter_detalhes_noticia(url):
         )
 
         if not artigo:
+
             continue
 
         resultado["titulo"] = (
-            artigo.get("headline")
-            or artigo.get("name")
-            or resultado["titulo"]
+            artigo.get(
+                "headline"
+            )
+            or artigo.get(
+                "name"
+            )
+            or resultado[
+                "titulo"
+            ]
         )
 
         resultado["descricao"] = (
-            artigo.get("description")
-            or resultado["descricao"]
+            artigo.get(
+                "description"
+            )
+            or resultado[
+                "descricao"
+            ]
         )
 
         resultado["categoria"] = (
-            artigo.get("articleSection")
-            or resultado["categoria"]
+            artigo.get(
+                "articleSection"
+            )
+            or resultado[
+                "categoria"
+            ]
         )
 
         resultado["autor"] = (
             obter_nome_autor(
-                artigo.get("author")
+                artigo.get(
+                    "author"
+                )
             )
-            or resultado["autor"]
+            or resultado[
+                "autor"
+            ]
         )
 
         resultado["publicado"] = (
-            artigo.get("datePublished")
-            or resultado["publicado"]
+            artigo.get(
+                "datePublished"
+            )
+            or resultado[
+                "publicado"
+            ]
         )
 
         resultado["atualizado"] = (
-            artigo.get("dateModified")
-            or resultado["atualizado"]
+            artigo.get(
+                "dateModified"
+            )
+            or resultado[
+                "atualizado"
+            ]
         )
 
         resultado["conteudo"] = (
-            artigo.get("articleBody")
-            or resultado["conteudo"]
+            artigo.get(
+                "articleBody"
+            )
+            or resultado[
+                "conteudo"
+            ]
         )
 
         resultado["imagem"] = (
             obter_url_imagem(
-                artigo.get("image")
+                artigo.get(
+                    "image"
+                )
             )
-            or resultado["imagem"]
+            or resultado[
+                "imagem"
+            ]
         )
 
         break
@@ -694,7 +816,7 @@ def obter_detalhes_noticia(url):
 
 
 # ================================================================
-# EXTRAIR NOTICIAS DO DIA
+# NOTICIAS DA DATA
 # ================================================================
 
 def extrair_noticias_da_data(
@@ -711,10 +833,12 @@ def extrair_noticias_da_data(
     except ET.ParseError as erro:
 
         print(
-            "Erro ao interpretar o sitemap:"
+            "Erro ao interpretar sitemap:"
         )
 
-        print(erro)
+        print(
+            erro
+        )
 
         return []
 
@@ -771,15 +895,26 @@ def extrair_noticias_da_data(
 
             continue
 
-        noticias.append({
-            "titulo": titulo,
-            "data": data_noticia,
-            "hora": data_hora.strftime(
-                "%H:%M"
-            ),
-            "data_iso": data_publicacao,
-            "link": link
-        })
+        noticias.append(
+            {
+                "titulo":
+                    titulo,
+
+                "data":
+                    data_noticia,
+
+                "hora":
+                    data_hora.strftime(
+                        "%H:%M"
+                    ),
+
+                "data_iso":
+                    data_publicacao,
+
+                "link":
+                    link
+            }
+        )
 
     noticias.sort(
         key=lambda noticia: noticia[
@@ -792,7 +927,7 @@ def extrair_noticias_da_data(
 
 
 # ================================================================
-# CRIAR ARQUIVO JSON
+# CRIAR / SUBSTITUIR JSON
 # ================================================================
 
 def criar_arquivo_json(
@@ -810,26 +945,44 @@ def criar_arquivo_json(
         FUSO_BRASIL
     )
 
+    # Este caminho nunca muda.
     caminho = os.path.join(
         PASTA_RESULTADOS,
         NOME_ARQUIVO_JSON
     )
 
     dados_json = {
-        "fonte": "CNN Brasil",
-        "data_pesquisada": data_desejada,
-        "data_geracao": agora_brasil.strftime(
-            "%d/%m/%Y %H:%M:%S"
-        ),
-        "fuso_horario": "UTC-03:00",
-        "total_analisadas": total_analisadas,
-        "total_noticias": len(
+
+        "fonte":
+            "CNN Brasil",
+
+        "data_pesquisada":
+            data_desejada,
+
+        "data_geracao":
+            agora_brasil.strftime(
+                "%d/%m/%Y %H:%M:%S"
+            ),
+
+        "fuso_horario":
+            "UTC-03:00",
+
+        "total_analisadas":
+            total_analisadas,
+
+        "total_noticias":
+            len(
+                noticias
+            ),
+
+        "temas_monitorados":
+            TEMAS,
+
+        "noticias":
             noticias
-        ),
-        "temas_monitorados": TEMAS,
-        "noticias": noticias
     }
 
+    # "w" substitui o arquivo existente.
     with open(
         caminho,
         "w",
@@ -847,15 +1000,16 @@ def criar_arquivo_json(
 
 
 # ================================================================
-# BUSCA PRINCIPAL
+# BUSCA
 # ================================================================
 
 def buscar_noticias(
     data_desejada
 ):
 
+    print()
     print(
-        "\nConsultando CNN Brasil..."
+        "Consultando CNN Brasil..."
     )
 
     xml = baixar_sitemap()
@@ -868,9 +1022,11 @@ def buscar_noticias(
 
         return False
 
-    noticias_encontradas = extrair_noticias_da_data(
-        xml,
-        data_desejada
+    noticias_encontradas = (
+        extrair_noticias_da_data(
+            xml,
+            data_desejada
+        )
     )
 
     total = len(
@@ -895,21 +1051,31 @@ def buscar_noticias(
         )
 
         detalhes = obter_detalhes_noticia(
-            noticia["link"]
+            noticia[
+                "link"
+            ]
         )
 
         titulo = (
-            detalhes["titulo"]
-            or noticia["titulo"]
+            detalhes[
+                "titulo"
+            ]
+            or noticia[
+                "titulo"
+            ]
         )
 
         descricao = (
-            detalhes["descricao"]
+            detalhes[
+                "descricao"
+            ]
             or ""
         )
 
         conteudo = (
-            detalhes["conteudo"]
+            detalhes[
+                "conteudo"
+            ]
             or ""
         )
 
@@ -927,10 +1093,14 @@ def buscar_noticias(
 
             continue
 
-        if detalhes["publicado"]:
+        if detalhes[
+            "publicado"
+        ]:
 
             publicado = formatar_data_iso(
-                detalhes["publicado"]
+                detalhes[
+                    "publicado"
+                ]
             )
 
         else:
@@ -940,47 +1110,83 @@ def buscar_noticias(
                 f"{noticia['hora']}"
             )
 
-        if detalhes["atualizado"]:
+        if detalhes[
+            "atualizado"
+        ]:
 
             atualizado = formatar_data_iso(
-                detalhes["atualizado"]
+                detalhes[
+                    "atualizado"
+                ]
             )
 
         else:
 
-            atualizado = "Nao informado"
+            atualizado = (
+                "Nao informado"
+            )
 
-        noticias_filtradas.append({
-            "data": noticia["data"],
-            "hora": noticia["hora"],
-            "tema": ", ".join(
-                temas
-            ),
-            "palavras_encontradas": ", ".join(
-                palavras
-            ),
-            "titulo": titulo,
-            "descricao": (
+        noticia_final = {
+
+            "data":
+                noticia[
+                    "data"
+                ],
+
+            "hora":
+                noticia[
+                    "hora"
+                ],
+
+            "tema":
+                ", ".join(
+                    temas
+                ),
+
+            "palavras_encontradas":
+                ", ".join(
+                    palavras
+                ),
+
+            "titulo":
+                titulo,
+
+            "descricao":
                 descricao
-                or "Nao informado"
-            ),
-            "categoria": (
-                detalhes["categoria"]
-                or "Nao informado"
-            ),
-            "autor": (
-                detalhes["autor"]
-                or "Nao informado"
-            ),
-            "publicado": publicado,
-            "atualizado": atualizado,
-            "imagem": detalhes[
-                "imagem"
-            ],
-            "link": noticia[
-                "link"
-            ]
-        })
+                or "Nao informado",
+
+            "categoria":
+                detalhes[
+                    "categoria"
+                ]
+                or "Nao informado",
+
+            "autor":
+                detalhes[
+                    "autor"
+                ]
+                or "Nao informado",
+
+            "publicado":
+                publicado,
+
+            "atualizado":
+                atualizado,
+
+            "imagem":
+                detalhes[
+                    "imagem"
+                ],
+
+            "link":
+                noticia[
+                    "link"
+                ]
+        }
+
+        noticias_filtradas.append(
+            noticia_final
+        )
 
         time.sleep(
             0.3
@@ -1023,7 +1229,7 @@ def buscar_noticias(
     )
 
     print(
-        "JSON CRIADO COM SUCESSO"
+        "JSON ATUALIZADO"
     )
 
     print(
@@ -1035,11 +1241,16 @@ def buscar_noticias(
         arquivo_json
     )
 
+    print(
+        "Este arquivo substitui "
+        "automaticamente o anterior."
+    )
+
     return True
 
 
 # ================================================================
-# PROGRAMA PRINCIPAL
+# MAIN
 # ================================================================
 
 def main():
@@ -1065,7 +1276,7 @@ def main():
     )
 
     print(
-        "Data da pesquisa:",
+        "Data:",
         data_pesquisa
     )
 
@@ -1077,7 +1288,15 @@ def main():
     )
 
     print(
-        "Fuso horario: UTC-03:00"
+        "Fuso: UTC-03:00"
+    )
+
+    print(
+        "Arquivo de saida:",
+        (
+            f"{PASTA_RESULTADOS}/"
+            f"{NOME_ARQUIVO_JSON}"
+        )
     )
 
     print(
