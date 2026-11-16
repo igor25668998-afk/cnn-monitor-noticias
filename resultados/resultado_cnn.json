@@ -1,0 +1,91 @@
+{
+    "fonte": "CNN Brasil",
+    "data_pesquisada": "16/11/2026",
+    "data_geracao": "16/11/2026 10:38:33",
+    "fuso_horario": "UTC-03:00",
+    "total_analisadas": 9,
+    "total_noticias": 3,
+    "temas_monitorados": {
+        "Seguranca": [
+            "polícia",
+            "roubo",
+            "furto",
+            "assalto",
+            "tiroteio",
+            "violência",
+            "operação policial",
+            "criminosos",
+            "facção"
+        ],
+        "Desastres e Operacoes": [
+            "incêndio",
+            "enchente",
+            "alagamento",
+            "explosão",
+            "acidente",
+            "desabamento",
+            "temporal"
+        ],
+        "Logistica": [
+            "rodovia",
+            "aeroporto",
+            "greve",
+            "bloqueio",
+            "interdição",
+            "trânsito",
+            "caminhoneiros"
+        ],
+        "Tecnologia e Seguranca Digital": [
+            "ataque hacker",
+            "ciberataque",
+            "ransomware",
+            "vazamento de dados",
+            "fraude",
+            "inteligência artificial"
+        ]
+    },
+    "noticias": [
+        {
+            "data": "16/11/2026",
+            "hora": "03:08",
+            "tema": "Seguranca",
+            "palavras_encontradas": "polícia, criminosos",
+            "titulo": "Narcotraficante fundador do cartel de Guadalajara morre aos 80 anos",
+            "descricao": "Conhecido como \"chefe dos chefes\", Miguel Ángel Félix Gallardo estava preso desde 1989, após ser condenado pelo assassinato de um agente antidrogas dos EUA",
+            "categoria": "Internacional",
+            "autor": "Da Reuters",
+            "publicado": "16/11/2026 03:08",
+            "atualizado": "16/11/2026 03:08",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2026/11/2026-11-16T015317Z_1_LOP858916112026RP1_RTRMADP_BASEIMAGE-960X540_MEXICO-CRIME-GALLARDO-e1794809304407.jpg?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/internacional/narcotraficante-fundador-do-cartel-de-guadalajara-morre-aos-80-anos/"
+        },
+        {
+            "data": "16/11/2026",
+            "hora": "03:00",
+            "tema": "Seguranca, Logistica",
+            "palavras_encontradas": "polícia, rodovia",
+            "titulo": "Lula volta ao Brasil e deve retomar negociações para novo governo",
+            "descricao": "Presidente retorna ao país após viagem à Turquia, Filipinas e Espanha; nomes para formação da Esplanada e indicações de cargos estão no radar para o novo mandato do petista",
+            "categoria": "Política",
+            "autor": "Álvaro Augusto",
+            "publicado": "16/11/2026 03:00",
+            "atualizado": "16/11/2026 07:25",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2026/11/Lula-na-COP-4.jpg?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/politica/lula-volta-ao-brasil-e-deve-retomar-negociacoes-para-novo-governo/"
+        },
+        {
+            "data": "16/11/2026",
+            "hora": "00:33",
+            "tema": "Seguranca, Desastres e Operacoes",
+            "palavras_encontradas": "polícia, incêndio",
+            "titulo": "Incêndio em prédio comercial deixa 11 mortos e 16 feridos na Tailândia",
+            "descricao": "Fogo começou em imóvel que abrigava uma locadora de veículos e se espalhou para prédios próximos; turistas não estão entre as vítimas",
+            "categoria": "Internacional",
+            "autor": "Panarat Thepgumpana, Panu Wongcha-um",
+            "publicado": "16/11/2026 00:33",
+            "atualizado": "16/11/2026 00:36",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2022/08/GettyImages-962920288.jpg?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/internacional/incendio-em-phuket-na-tailandia-deixa-mortos-e-feridos/"
+        }
+    ]
+}
