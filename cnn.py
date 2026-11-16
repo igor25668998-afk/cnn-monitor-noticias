@@ -4,8 +4,6 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 from html.parser import HTMLParser
 import unicodedata
-import subprocess
-import tempfile
 import json
 import os
 import time
@@ -17,14 +15,15 @@ import time
 
 URL_CNN = "https://www.cnnbrasil.com.br/sitemap-news.xml"
 
-DESTINATARIO_EMAIL = "igor.franca@fedex.com"
-
-ASSUNTO_EMAIL = "CNN"
-
-# Horario de Brasilia: UTC-3
+# Horario de Brasilia
 FUSO_BRASIL = timezone(
     timedelta(hours=-3)
 )
+
+# O GitHub Actions vai publicar esta pasta como Artifact.
+PASTA_RESULTADOS = "resultados"
+
+NOME_ARQUIVO_JSON = "resultado_cnn.json"
 
 NAMESPACES = {
     "sm": "http://www.sitemaps.org/schemas/sitemap/0.9",
@@ -94,7 +93,7 @@ TEMAS = {
 
 
 # ================================================================
-# NORMALIZACAO E CLASSIFICACAO
+# NORMALIZAR TEXTO
 # ================================================================
 
 def normalizar_texto(texto):
@@ -117,6 +116,10 @@ def normalizar_texto(texto):
 
     return texto
 
+
+# ================================================================
+# CLASSIFICAR NOTICIA
+# ================================================================
 
 def classificar_noticia(
     titulo,
@@ -200,7 +203,7 @@ class MetaParser(HTMLParser):
 
 
 # ================================================================
-# LEITOR DE JSON-LD
+# LEITOR JSON-LD
 # ================================================================
 
 class JSONLDParser(HTMLParser):
@@ -240,7 +243,6 @@ class JSONLDParser(HTMLParser):
     ):
 
         if self.capturando:
-
             self.conteudo_atual.append(
                 data
             )
@@ -260,7 +262,6 @@ class JSONLDParser(HTMLParser):
             ).strip()
 
             if conteudo:
-
                 self.blocos.append(
                     conteudo
                 )
@@ -270,7 +271,7 @@ class JSONLDParser(HTMLParser):
 
 
 # ================================================================
-# REQUISICOES
+# REQUISICOES HTTP
 # ================================================================
 
 def fazer_requisicao(
@@ -301,21 +302,25 @@ def baixar_sitemap():
 
     except urllib.error.HTTPError as erro:
 
-        print()
-        print("Erro HTTP ao acessar a CNN.")
-        print("Codigo:", erro.code)
-        print("Motivo:", erro.reason)
+        print(
+            f"Erro HTTP ao acessar a CNN: "
+            f"{erro.code} - {erro.reason}"
+        )
 
     except urllib.error.URLError as erro:
 
-        print()
-        print("Erro de conexao ao acessar a CNN.")
+        print(
+            "Erro de conexao ao acessar a CNN:"
+        )
+
         print(erro)
 
     except Exception as erro:
 
-        print()
-        print("Erro inesperado ao acessar a CNN.")
+        print(
+            "Erro inesperado ao acessar a CNN:"
+        )
+
         print(erro)
 
     return None
@@ -361,7 +366,6 @@ def formatar_data_iso(data_iso):
 def obter_nome_autor(autor):
 
     if isinstance(autor, str):
-
         return autor.strip()
 
     if isinstance(autor, dict):
@@ -397,9 +401,14 @@ def obter_nome_autor(autor):
                 nome = ""
 
             if nome:
-                nomes.append(nome)
 
-        return ", ".join(nomes)
+                nomes.append(
+                    nome
+                )
+
+        return ", ".join(
+            nomes
+        )
 
     return ""
 
@@ -424,7 +433,6 @@ def obter_url_imagem(imagem):
         primeira = imagem[0]
 
         if isinstance(primeira, str):
-
             return primeira.strip()
 
         if isinstance(primeira, dict):
@@ -467,8 +475,11 @@ def procurar_artigo_json(dados):
     )
 
     if isinstance(tipo, list):
+
         tipos = tipo
+
     else:
+
         tipos = [tipo]
 
     tipos_validos = {
@@ -683,7 +694,7 @@ def obter_detalhes_noticia(url):
 
 
 # ================================================================
-# EXTRAIR NOTICIAS DA DATA
+# EXTRAIR NOTICIAS DO DIA
 # ================================================================
 
 def extrair_noticias_da_data(
@@ -699,8 +710,10 @@ def extrair_noticias_da_data(
 
     except ET.ParseError as erro:
 
-        print()
-        print("Erro ao interpretar o sitemap:")
+        print(
+            "Erro ao interpretar o sitemap:"
+        )
+
         print(erro)
 
         return []
@@ -734,6 +747,7 @@ def extrair_noticias_da_data(
         )
 
         if not link or not data_publicacao:
+
             continue
 
         try:
@@ -746,6 +760,7 @@ def extrair_noticias_da_data(
             )
 
         except ValueError:
+
             continue
 
         data_noticia = data_hora.strftime(
@@ -753,6 +768,7 @@ def extrair_noticias_da_data(
         )
 
         if data_noticia != data_desejada:
+
             continue
 
         noticias.append({
@@ -776,30 +792,27 @@ def extrair_noticias_da_data(
 
 
 # ================================================================
-# CRIAR JSON TEMPORARIO
+# CRIAR ARQUIVO JSON
 # ================================================================
 
-def criar_json_temporario(
+def criar_arquivo_json(
     noticias,
     data_desejada,
     total_analisadas
 ):
 
+    os.makedirs(
+        PASTA_RESULTADOS,
+        exist_ok=True
+    )
+
     agora_brasil = datetime.now(
         FUSO_BRASIL
     )
 
-    nome_arquivo = (
-        "cnn_resultado_"
-        + agora_brasil.strftime(
-            "%Y-%m-%d_%H-%M-%S"
-        )
-        + ".json"
-    )
-
     caminho = os.path.join(
-        tempfile.gettempdir(),
-        nome_arquivo
+        PASTA_RESULTADOS,
+        NOME_ARQUIVO_JSON
     )
 
     dados_json = {
@@ -834,202 +847,6 @@ def criar_json_temporario(
 
 
 # ================================================================
-# ENVIAR EMAIL PELO OUTLOOK CLASSICO
-# ================================================================
-
-def escapar_powershell(texto):
-
-    return str(texto).replace(
-        "'",
-        "''"
-    )
-
-
-def enviar_email_outlook(
-    destinatario,
-    assunto,
-    corpo,
-    caminho_anexo
-):
-
-    caminho_anexo = os.path.abspath(
-        caminho_anexo
-    )
-
-    if not os.path.isfile(
-        caminho_anexo
-    ):
-
-        raise FileNotFoundError(
-            "Arquivo de anexo nao encontrado: "
-            + caminho_anexo
-        )
-
-    destinatario_ps = escapar_powershell(
-        destinatario
-    )
-
-    assunto_ps = escapar_powershell(
-        assunto
-    )
-
-    anexo_ps = escapar_powershell(
-        caminho_anexo
-    )
-
-    # O corpo vai para um arquivo temporario para evitar
-    # problemas com quebras de linha no PowerShell.
-
-    caminho_corpo = os.path.join(
-        tempfile.gettempdir(),
-        "cnn_corpo_email.txt"
-    )
-
-    with open(
-        caminho_corpo,
-        "w",
-        encoding="utf-8-sig"
-    ) as arquivo:
-
-        arquivo.write(
-            corpo
-        )
-
-    corpo_ps = escapar_powershell(
-        caminho_corpo
-    )
-
-    script_powershell = f"""
-$ErrorActionPreference = 'Stop'
-
-$outlook = New-Object -ComObject Outlook.Application
-$email = $outlook.CreateItem(0)
-
-$email.To = '{destinatario_ps}'
-$email.Subject = '{assunto_ps}'
-$email.Body = Get-Content -LiteralPath '{corpo_ps}' -Raw -Encoding UTF8
-
-$email.Attachments.Add('{anexo_ps}') | Out-Null
-
-$email.Send()
-
-Write-Output 'EMAIL_ENVIADO'
-"""
-
-    try:
-
-        resultado = subprocess.run(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                script_powershell
-            ],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=120
-        )
-
-    finally:
-
-        try:
-
-            if os.path.exists(
-                caminho_corpo
-            ):
-
-                os.remove(
-                    caminho_corpo
-                )
-
-        except Exception:
-
-            pass
-
-    if resultado.returncode != 0:
-
-        mensagem_erro = (
-            resultado.stderr.strip()
-            or resultado.stdout.strip()
-            or "Erro desconhecido durante o envio."
-        )
-
-        raise RuntimeError(
-            mensagem_erro
-        )
-
-    if "EMAIL_ENVIADO" not in resultado.stdout:
-
-        raise RuntimeError(
-            "O Outlook nao confirmou o envio."
-        )
-
-    return True
-
-
-# ================================================================
-# MONTAR CORPO DO EMAIL
-# ================================================================
-
-def montar_corpo_email(
-    data_desejada,
-    total_analisadas,
-    noticias_filtradas
-):
-
-    contagem_temas = {}
-
-    for tema in TEMAS:
-
-        contagem_temas[tema] = sum(
-            1
-            for noticia in noticias_filtradas
-            if tema in noticia.get(
-                "tema",
-                ""
-            )
-        )
-
-    linhas = [
-        "Bom dia,",
-        "",
-        "Segue o resultado da consulta automatizada realizada "
-        "no portal CNN Brasil.",
-        "",
-        f"Data da consulta: {data_desejada}",
-        f"Materias analisadas: {total_analisadas}",
-        (
-            "Noticias relevantes encontradas: "
-            f"{len(noticias_filtradas)}"
-        ),
-        "",
-        "Resumo por tema:"
-    ]
-
-    for tema, quantidade in contagem_temas.items():
-
-        linhas.append(
-            f"- {tema}: {quantidade}"
-        )
-
-    linhas.extend([
-        "",
-        "O arquivo JSON anexado contem os titulos, descricoes, "
-        "categorias, autores, datas, imagens e links das noticias.",
-        "",
-        "Mensagem gerada automaticamente pelo Monitor de Noticias CNN."
-    ])
-
-    return "\n".join(
-        linhas
-    )
-
-
-# ================================================================
 # BUSCA PRINCIPAL
 # ================================================================
 
@@ -1037,9 +854,9 @@ def buscar_noticias(
     data_desejada
 ):
 
-    print()
-    print("Consultando a CNN Brasil...")
-    print("Aguarde...")
+    print(
+        "\nConsultando CNN Brasil..."
+    )
 
     xml = baixar_sitemap()
 
@@ -1060,24 +877,9 @@ def buscar_noticias(
         noticias_encontradas
     )
 
-    print()
     print(
         "Noticias encontradas:",
         total
-    )
-
-    if total == 0:
-
-        print()
-        print(
-            "Nenhuma noticia foi encontrada para a data atual."
-        )
-
-        return True
-
-    print()
-    print(
-        "Analisando materias e aplicando filtros..."
     )
 
     noticias_filtradas = []
@@ -1088,7 +890,8 @@ def buscar_noticias(
     ):
 
         print(
-            f"Analisando noticia {numero} de {total}..."
+            f"Analisando noticia "
+            f"{numero} de {total}..."
         )
 
         detalhes = obter_detalhes_noticia(
@@ -1118,7 +921,10 @@ def buscar_noticias(
 
         if not temas:
 
-            time.sleep(0.3)
+            time.sleep(
+                0.3
+            )
+
             continue
 
         if detalhes["publicado"]:
@@ -1168,16 +974,30 @@ def buscar_noticias(
             ),
             "publicado": publicado,
             "atualizado": atualizado,
-            "imagem": detalhes["imagem"],
-            "link": noticia["link"]
+            "imagem": detalhes[
+                "imagem"
+            ],
+            "link": noticia[
+                "link"
+            ]
         })
 
-        time.sleep(0.3)
+        time.sleep(
+            0.3
+        )
 
     print()
-    print("=" * 80)
-    print("RESULTADO")
-    print("=" * 80)
+    print(
+        "=" * 80
+    )
+
+    print(
+        "RESULTADO"
+    )
+
+    print(
+        "=" * 80
+    )
 
     print(
         "Noticias analisadas:",
@@ -1191,129 +1011,29 @@ def buscar_noticias(
         )
     )
 
-    for numero, noticia in enumerate(
-        noticias_filtradas,
-        start=1
-    ):
-
-        print()
-        print("-" * 80)
-        print(f"NOTICIA {numero}")
-        print("Tema:", noticia["tema"])
-
-        print(
-            "Palavras:",
-            noticia["palavras_encontradas"]
-        )
-
-        print(
-            "Titulo:",
-            noticia["titulo"]
-        )
-
-        print(
-            "Link:",
-            noticia["link"]
-        )
-
-    # O JSON sera criado mesmo se nenhuma materia
-    # passar pelos filtros.
-
-    arquivo_json = criar_json_temporario(
+    arquivo_json = criar_arquivo_json(
         noticias=noticias_filtradas,
         data_desejada=data_desejada,
         total_analisadas=total
     )
 
-    corpo = montar_corpo_email(
-        data_desejada=data_desejada,
-        total_analisadas=total,
-        noticias_filtradas=noticias_filtradas
+    print()
+    print(
+        "=" * 80
     )
 
-    try:
+    print(
+        "JSON CRIADO COM SUCESSO"
+    )
 
-        print()
-        print(
-            "Enviando email pelo Outlook classico..."
-        )
+    print(
+        "=" * 80
+    )
 
-        enviar_email_outlook(
-            destinatario=DESTINATARIO_EMAIL,
-            assunto=ASSUNTO_EMAIL,
-            corpo=corpo,
-            caminho_anexo=arquivo_json
-        )
-
-        print()
-        print("=" * 80)
-        print("EMAIL ENVIADO COM SUCESSO")
-        print("=" * 80)
-
-        print(
-            "Destinatario:",
-            DESTINATARIO_EMAIL
-        )
-
-        print(
-            "Assunto:",
-            ASSUNTO_EMAIL
-        )
-
-        print(
-            "Anexo:",
-            os.path.basename(
-                arquivo_json
-            )
-        )
-
-    except Exception as erro:
-
-        print()
-        print("=" * 80)
-        print("ERRO NO ENVIO DO EMAIL")
-        print("=" * 80)
-
-        print()
-        print(erro)
-
-        print()
-        print(
-            "O JSON foi mantido para verificacao em:"
-        )
-
-        print(
-            arquivo_json
-        )
-
-        return False
-
-    # Remover JSON somente quando o Outlook confirmar o envio.
-
-    try:
-
-        if os.path.exists(
-            arquivo_json
-        ):
-
-            os.remove(
-                arquivo_json
-            )
-
-            print()
-            print(
-                "Arquivo JSON temporario removido."
-            )
-
-    except Exception as erro:
-
-        print()
-        print(
-            "O email foi enviado, mas o JSON "
-            "temporario nao foi removido."
-        )
-
-        print(erro)
+    print(
+        "Arquivo:",
+        arquivo_json
+    )
 
     return True
 
@@ -1332,13 +1052,20 @@ def main():
         "%d/%m/%Y"
     )
 
-    print("=" * 80)
-    print("MONITOR DE NOTICIAS - CNN BRASIL")
-    print("=" * 80)
-
-    print()
     print(
-        "Data automatica:",
+        "=" * 80
+    )
+
+    print(
+        "MONITOR DE NOTICIAS - CNN BRASIL"
+    )
+
+    print(
+        "=" * 80
+    )
+
+    print(
+        "Data da pesquisa:",
         data_pesquisa
     )
 
@@ -1353,35 +1080,9 @@ def main():
         "Fuso horario: UTC-03:00"
     )
 
-    print()
     print(
-        "Destinatario:",
-        DESTINATARIO_EMAIL
+        "=" * 80
     )
-
-    print(
-        "Assunto:",
-        ASSUNTO_EMAIL
-    )
-
-    print()
-    print("Temas monitorados:")
-
-    for tema, palavras in TEMAS.items():
-
-        print()
-        print(
-            f"{tema}:"
-        )
-
-        print(
-            ", ".join(
-                palavras
-            )
-        )
-
-    print()
-    print("=" * 80)
 
     sucesso = buscar_noticias(
         data_pesquisa
