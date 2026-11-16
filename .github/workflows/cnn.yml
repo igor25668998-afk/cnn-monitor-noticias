@@ -1,0 +1,36 @@
+name: Monitor CNN
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "7,27,47 * * * *"
+
+jobs:
+
+  monitor-cnn:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Exibir versao do Python
+        run: python --version
+
+      - name: Executar monitor CNN
+        run: python cnn.py
+
+      - name: Publicar resultado JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-cnn
+          path: resultados/
+          retention-days: 1
