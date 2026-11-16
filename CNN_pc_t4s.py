@@ -3,12 +3,18 @@ import urllib.error
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 from html.parser import HTMLParser
+from html import escape
 import unicodedata
 import subprocess
 import tempfile
 import json
 import os
 import time
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.worksheet.table import Table, TableStyleInfo
+
 
 # ================================================================
 # CONFIGURACAO
@@ -18,9 +24,8 @@ URL_CNN = "https://www.cnnbrasil.com.br/sitemap-news.xml"
 
 DESTINATARIO_EMAIL = "igor.franca@fedex.com"
 
-ASSUNTO_EMAIL = "CNN"
+ASSUNTO_EMAIL = "Monitor de Noticias CNN Brasil"
 
-# Horario de Brasilia: UTC-3
 FUSO_BRASIL = timezone(
     timedelta(hours=-3)
 )
@@ -42,6 +47,7 @@ HEADERS = {
     ),
     "Accept-Language": "pt-BR,pt;q=0.9"
 }
+
 
 # ================================================================
 # TEMAS E PALAVRAS-CHAVE
@@ -90,6 +96,7 @@ TEMAS = {
     ]
 }
 
+
 # ================================================================
 # NORMALIZACAO E CLASSIFICACAO
 # ================================================================
@@ -113,6 +120,7 @@ def normalizar_texto(texto):
     )
 
     return texto
+
 
 def classificar_noticia(
     titulo,
@@ -151,10 +159,8 @@ def classificar_noticia(
                 tema
             )
 
-    return (
-        temas_encontrados,
-        palavras_encontradas
-    )
+    return temas_encontrados, palavras_encontradas
+
 
 # ================================================================
 # LEITOR DE META TAGS
@@ -192,6 +198,7 @@ class MetaParser(HTMLParser):
 
         if chave and conteudo:
             self.metadados[chave] = conteudo
+
 
 # ================================================================
 # LEITOR DE JSON-LD
@@ -262,6 +269,7 @@ class JSONLDParser(HTMLParser):
             self.capturando = False
             self.conteudo_atual = []
 
+
 # ================================================================
 # REQUISICOES
 # ================================================================
@@ -282,6 +290,7 @@ def fazer_requisicao(
     ) as resposta:
 
         return resposta.read()
+
 
 def baixar_sitemap():
 
@@ -312,6 +321,7 @@ def baixar_sitemap():
 
     return None
 
+
 # ================================================================
 # FUNCOES AUXILIARES
 # ================================================================
@@ -324,6 +334,7 @@ def obter_texto(elemento):
     return (
         elemento.text or ""
     ).strip()
+
 
 def formatar_data_iso(data_iso):
 
@@ -339,6 +350,12 @@ def formatar_data_iso(data_iso):
             )
         )
 
+        if data_hora.tzinfo is not None:
+
+            data_hora = data_hora.astimezone(
+                FUSO_BRASIL
+            )
+
         return data_hora.strftime(
             "%d/%m/%Y %H:%M"
         )
@@ -346,6 +363,7 @@ def formatar_data_iso(data_iso):
     except ValueError:
 
         return data_iso
+
 
 def obter_nome_autor(autor):
 
@@ -386,11 +404,17 @@ def obter_nome_autor(autor):
                 nome = ""
 
             if nome:
-                nomes.append(nome)
 
-        return ", ".join(nomes)
+                nomes.append(
+                    nome
+                )
+
+        return ", ".join(
+            nomes
+        )
 
     return ""
+
 
 def obter_url_imagem(imagem):
 
@@ -409,22 +433,29 @@ def obter_url_imagem(imagem):
 
     if isinstance(imagem, list) and imagem:
 
-        primeira = imagem[0]
+        primeira_imagem = imagem[0]
 
-        if isinstance(primeira, str):
+        if isinstance(
+            primeira_imagem,
+            str
+        ):
 
-            return primeira.strip()
+            return primeira_imagem.strip()
 
-        if isinstance(primeira, dict):
+        if isinstance(
+            primeira_imagem,
+            dict
+        ):
 
             return str(
-                primeira.get(
+                primeira_imagem.get(
                     "url",
                     ""
                 )
             ).strip()
 
     return ""
+
 
 # ================================================================
 # LOCALIZAR ARTIGO NO JSON-LD
@@ -501,6 +532,7 @@ def procurar_artigo_json(dados):
 
     return None
 
+
 # ================================================================
 # OBTER DETALHES DA NOTICIA
 # ================================================================
@@ -525,7 +557,7 @@ def obter_detalhes_noticia(url):
             url
         )
 
-        html = dados_html.decode(
+        pagina_html = dados_html.decode(
             "utf-8",
             errors="ignore"
         )
@@ -545,7 +577,7 @@ def obter_detalhes_noticia(url):
     parser_meta = MetaParser()
 
     parser_meta.feed(
-        html
+        pagina_html
     )
 
     metas = parser_meta.metadados
@@ -593,7 +625,7 @@ def obter_detalhes_noticia(url):
     parser_json = JSONLDParser()
 
     parser_json.feed(
-        html
+        pagina_html
     )
 
     for bloco in parser_json.blocos:
@@ -667,6 +699,7 @@ def obter_detalhes_noticia(url):
 
     return resultado
 
+
 # ================================================================
 # EXTRAIR NOTICIAS DA DATA
 # ================================================================
@@ -730,10 +763,23 @@ def extrair_noticias_da_data(
                 )
             )
 
+            if data_hora.tzinfo is not None:
+
+                data_hora_brasil = data_hora.astimezone(
+                    FUSO_BRASIL
+                )
+
+            else:
+
+                data_hora_brasil = data_hora.replace(
+                    tzinfo=FUSO_BRASIL
+                )
+
         except ValueError:
+
             continue
 
-        data_noticia = data_hora.strftime(
+        data_noticia = data_hora_brasil.strftime(
             "%d/%m/%Y"
         )
 
@@ -743,81 +789,1272 @@ def extrair_noticias_da_data(
         noticias.append({
             "titulo": titulo,
             "data": data_noticia,
-            "hora": data_hora.strftime(
+            "hora": data_hora_brasil.strftime(
                 "%H:%M"
             ),
-            "data_iso": data_publicacao,
+            "data_iso": data_hora_brasil.isoformat(),
             "link": link
         })
 
     noticias.sort(
-        key=lambda noticia: noticia[
-            "data_iso"
-        ],
+        key=lambda noticia: noticia.get(
+            "data_iso",
+            ""
+        ),
         reverse=True
     )
 
     return noticias
 
+
 # ================================================================
-# CRIAR JSON TEMPORARIO
+# CORES DOS TEMAS
 # ================================================================
 
-def criar_json_temporario(
-    noticias,
+def obter_cor_tema(tema):
+
+    cores = {
+        "Seguranca": "#C62828",
+        "Desastres e Operacoes": "#EF6C00",
+        "Logistica": "#1565C0",
+        "Tecnologia e Seguranca Digital": "#6A1B9A"
+    }
+
+    temas_separados = [
+        item.strip()
+        for item in tema.split(",")
+        if item.strip()
+    ]
+
+    for item in temas_separados:
+
+        if item in cores:
+            return cores[item]
+
+    return "#37474F"
+
+
+# ================================================================
+# MONTAR HTML DO EMAIL
+# ================================================================
+
+def montar_corpo_email_html(
     data_desejada,
-    total_analisadas
+    total_analisadas,
+    noticias_filtradas
 ):
 
     agora_brasil = datetime.now(
         FUSO_BRASIL
     )
 
-    nome_arquivo = (
-        "cnn_resultado_"
-        + agora_brasil.strftime(
-            "%Y-%m-%d_%H-%M-%S"
+    contagem_temas = {}
+
+    for tema in TEMAS:
+
+        contagem_temas[tema] = sum(
+            1
+            for noticia in noticias_filtradas
+            if tema in noticia.get(
+                "tema",
+                ""
+            )
         )
+
+    resumo_temas_html = ""
+
+    for tema, quantidade in contagem_temas.items():
+
+        resumo_temas_html += f"""
+        <td style="padding:8px;vertical-align:top;">
+            <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                    border-collapse:collapse;
+                    background-color:#F3F4F6;
+                    border:1px solid #E5E7EB;
+                "
+            >
+                <tr>
+                    <td style="
+                        padding:12px;
+                        text-align:center;
+                        font-family:Arial,Helvetica,sans-serif;
+                    ">
+                        <div style="
+                            color:#374151;
+                            font-size:12px;
+                            font-weight:bold;
+                            line-height:18px;
+                        ">
+                            {escape(tema)}
+                        </div>
+
+                        <div style="
+                            margin-top:4px;
+                            color:#B71C1C;
+                            font-size:24px;
+                            font-weight:bold;
+                            line-height:30px;
+                        ">
+                            {quantidade}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </td>
+        """
+
+    noticias_html = ""
+
+    if not noticias_filtradas:
+
+        noticias_html = """
+        <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            border="0"
+            style="
+                border-collapse:collapse;
+                margin-top:20px;
+                background-color:#FFF8E1;
+                border:1px solid #FFE082;
+            "
+        >
+            <tr>
+                <td style="
+                    padding:24px;
+                    text-align:center;
+                    color:#795548;
+                    font-family:Arial,Helvetica,sans-serif;
+                    font-size:15px;
+                    line-height:22px;
+                ">
+                    Nenhuma matéria correspondente aos temas monitorados
+                    foi encontrada nesta consulta.
+                </td>
+            </tr>
+        </table>
+        """
+
+    else:
+
+        for numero, noticia in enumerate(
+            noticias_filtradas,
+            start=1
+        ):
+
+            tema_original = str(
+                noticia.get(
+                    "tema",
+                    "Não informado"
+                )
+            )
+
+            cor_tema = obter_cor_tema(
+                tema_original
+            )
+
+            titulo = escape(
+                str(
+                    noticia.get(
+                        "titulo",
+                        "Título não informado"
+                    )
+                )
+            )
+
+            descricao = escape(
+                str(
+                    noticia.get(
+                        "descricao",
+                        "Não informado"
+                    )
+                )
+            )
+
+            tema = escape(
+                tema_original
+            )
+
+            palavras = escape(
+                str(
+                    noticia.get(
+                        "palavras_encontradas",
+                        "Não informado"
+                    )
+                )
+            )
+
+            categoria = escape(
+                str(
+                    noticia.get(
+                        "categoria",
+                        "Não informado"
+                    )
+                )
+            )
+
+            autor = escape(
+                str(
+                    noticia.get(
+                        "autor",
+                        "Não informado"
+                    )
+                )
+            )
+
+            publicado = escape(
+                str(
+                    noticia.get(
+                        "publicado",
+                        "Não informado"
+                    )
+                )
+            )
+
+            atualizado = escape(
+                str(
+                    noticia.get(
+                        "atualizado",
+                        "Não informado"
+                    )
+                )
+            )
+
+            link_original = str(
+                noticia.get(
+                    "link",
+                    ""
+                )
+            ).strip()
+
+            link = escape(
+                link_original,
+                quote=True
+            )
+
+            imagem_original = str(
+                noticia.get(
+                    "imagem",
+                    ""
+                )
+            ).strip()
+
+            imagem = escape(
+                imagem_original,
+                quote=True
+            )
+
+            imagem_html = ""
+
+            if imagem_original.startswith(
+                ("http://", "https://")
+            ):
+
+                imagem_html = f"""
+                <tr>
+                    <td
+                        align="center"
+                        style="padding:18px 20px 5px 20px;"
+                    >
+                        <img
+                            src="{imagem}"
+                            alt="{titulo}"
+                            width="400"
+                            style="
+                                display:block;
+                                width:400px;
+                                max-width:100%;
+                                height:auto;
+                                border:0;
+                                margin:0 auto;
+                            "
+                        >
+                    </td>
+                </tr>
+                """
+
+            botao_html = ""
+
+            if link_original.startswith(
+                ("http://", "https://")
+            ):
+
+                botao_html = f"""
+                <table
+                    role="presentation"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                        border-collapse:collapse;
+                        margin-top:18px;
+                    "
+                >
+                    <tr>
+                        <td
+                            bgcolor="#B71C1C"
+                            style="
+                                background-color:#B71C1C;
+                                border-radius:4px;
+                            "
+                        >
+                            <a
+                                href="{link}"
+                                style="
+                                    display:inline-block;
+                                    padding:12px 20px;
+                                    color:#FFFFFF;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:14px;
+                                    font-weight:bold;
+                                    text-decoration:none;
+                                "
+                            >
+                                Acessar matéria completa
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+                """
+
+            noticias_html += f"""
+            <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                    width:100%;
+                    border-collapse:collapse;
+                    margin-top:24px;
+                    background-color:#FFFFFF;
+                    border:1px solid #D1D5DB;
+                "
+            >
+                <tr>
+                    <td
+                        bgcolor="{cor_tema}"
+                        style="
+                            padding:10px 18px;
+                            background-color:{cor_tema};
+                            color:#FFFFFF;
+                            font-family:Arial,Helvetica,sans-serif;
+                            font-size:13px;
+                            font-weight:bold;
+                        "
+                    >
+                        MATÉRIA {numero} &nbsp;|&nbsp; {tema}
+                    </td>
+                </tr>
+
+                {imagem_html}
+
+                <tr>
+                    <td style="padding:22px;">
+                        <h2 style="
+                            margin:0 0 12px 0;
+                            color:#111827;
+                            font-family:Arial,Helvetica,sans-serif;
+                            font-size:21px;
+                            line-height:29px;
+                        ">
+                            {titulo}
+                        </h2>
+
+                        <p style="
+                            margin:0 0 18px 0;
+                            color:#4B5563;
+                            font-family:Arial,Helvetica,sans-serif;
+                            font-size:15px;
+                            line-height:23px;
+                        ">
+                            {descricao}
+                        </p>
+
+                        <table
+                            role="presentation"
+                            width="100%"
+                            cellspacing="0"
+                            cellpadding="0"
+                            border="0"
+                            style="
+                                width:100%;
+                                border-collapse:collapse;
+                                background-color:#F9FAFB;
+                                border:1px solid #E5E7EB;
+                            "
+                        >
+                            <tr>
+                                <td style="
+                                    width:150px;
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#374151;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                    font-weight:bold;
+                                ">
+                                    Categoria
+                                </td>
+
+                                <td style="
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#4B5563;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                ">
+                                    {categoria}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="
+                                    width:150px;
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#374151;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                    font-weight:bold;
+                                ">
+                                    Autor
+                                </td>
+
+                                <td style="
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#4B5563;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                ">
+                                    {autor}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="
+                                    width:150px;
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#374151;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                    font-weight:bold;
+                                ">
+                                    Publicado
+                                </td>
+
+                                <td style="
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#4B5563;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                ">
+                                    {publicado}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="
+                                    width:150px;
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#374151;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                    font-weight:bold;
+                                ">
+                                    Atualizado
+                                </td>
+
+                                <td style="
+                                    padding:9px 12px;
+                                    border-bottom:1px solid #E5E7EB;
+                                    color:#4B5563;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                ">
+                                    {atualizado}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="
+                                    width:150px;
+                                    padding:9px 12px;
+                                    color:#374151;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                    font-weight:bold;
+                                ">
+                                    Palavras identificadas
+                                </td>
+
+                                <td style="
+                                    padding:9px 12px;
+                                    color:#4B5563;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:13px;
+                                ">
+                                    {palavras}
+                                </td>
+                            </tr>
+                        </table>
+
+                        {botao_html}
+                    </td>
+                </tr>
+            </table>
+            """
+
+    corpo_html = f"""
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        >
+
+        <title>
+            Monitor de Notícias CNN Brasil
+        </title>
+    </head>
+
+    <body style="
+        margin:0;
+        padding:0;
+        background-color:#E5E7EB;
+    ">
+        <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            border="0"
+            bgcolor="#E5E7EB"
+            style="
+                width:100%;
+                border-collapse:collapse;
+                background-color:#E5E7EB;
+            "
+        >
+            <tr>
+                <td
+                    align="center"
+                    style="padding:24px 10px;"
+                >
+                    <table
+                        role="presentation"
+                        width="740"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                        style="
+                            width:100%;
+                            max-width:740px;
+                            border-collapse:collapse;
+                            background-color:#FFFFFF;
+                        "
+                    >
+                        <tr>
+                            <td
+                                bgcolor="#B71C1C"
+                                style="
+                                    padding:28px 30px;
+                                    background-color:#B71C1C;
+                                    color:#FFFFFF;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                "
+                            >
+                                <div style="
+                                    font-size:27px;
+                                    font-weight:bold;
+                                    line-height:34px;
+                                ">
+                                    Monitor de Notícias
+                                </div>
+
+                                <div style="
+                                    margin-top:4px;
+                                    font-size:16px;
+                                    line-height:23px;
+                                ">
+                                    CNN Brasil
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="
+                                padding:30px;
+                                font-family:Arial,Helvetica,sans-serif;
+                            ">
+                                <p style="
+                                    margin:0 0 10px 0;
+                                    color:#111827;
+                                    font-size:16px;
+                                    line-height:24px;
+                                ">
+                                    Bom dia,
+                                </p>
+
+                                <p style="
+                                    margin:0 0 22px 0;
+                                    color:#4B5563;
+                                    font-size:15px;
+                                    line-height:23px;
+                                ">
+                                    Segue o resultado da consulta automatizada
+                                    realizada no portal CNN Brasil.
+                                </p>
+
+                                <table
+                                    role="presentation"
+                                    width="100%"
+                                    cellspacing="0"
+                                    cellpadding="0"
+                                    border="0"
+                                    style="
+                                        width:100%;
+                                        border-collapse:collapse;
+                                        background-color:#F9FAFB;
+                                        border:1px solid #E5E7EB;
+                                    "
+                                >
+                                    <tr>
+                                        <td style="
+                                            padding:11px 14px;
+                                            border-bottom:1px solid #E5E7EB;
+                                            color:#374151;
+                                            font-size:14px;
+                                            font-weight:bold;
+                                        ">
+                                            Data da consulta
+                                        </td>
+
+                                        <td style="
+                                            padding:11px 14px;
+                                            border-bottom:1px solid #E5E7EB;
+                                            color:#4B5563;
+                                            font-size:14px;
+                                        ">
+                                            {escape(data_desejada)}
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td style="
+                                            padding:11px 14px;
+                                            border-bottom:1px solid #E5E7EB;
+                                            color:#374151;
+                                            font-size:14px;
+                                            font-weight:bold;
+                                        ">
+                                            Matérias analisadas
+                                        </td>
+
+                                        <td style="
+                                            padding:11px 14px;
+                                            border-bottom:1px solid #E5E7EB;
+                                            color:#4B5563;
+                                            font-size:14px;
+                                        ">
+                                            {total_analisadas}
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td style="
+                                            padding:11px 14px;
+                                            color:#374151;
+                                            font-size:14px;
+                                            font-weight:bold;
+                                        ">
+                                            Notícias relevantes
+                                        </td>
+
+                                        <td style="
+                                            padding:11px 14px;
+                                            color:#B71C1C;
+                                            font-size:15px;
+                                            font-weight:bold;
+                                        ">
+                                            {len(noticias_filtradas)}
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <div style="
+                                    margin-top:28px;
+                                    margin-bottom:10px;
+                                    color:#111827;
+                                    font-size:18px;
+                                    font-weight:bold;
+                                ">
+                                    Resumo por tema
+                                </div>
+
+                                <table
+                                    role="presentation"
+                                    width="100%"
+                                    cellspacing="0"
+                                    cellpadding="0"
+                                    border="0"
+                                    style="
+                                        width:100%;
+                                        border-collapse:collapse;
+                                    "
+                                >
+                                    <tr>
+                                        {resumo_temas_html}
+                                    </tr>
+                                </table>
+
+                                <div style="
+                                    margin-top:30px;
+                                    color:#111827;
+                                    font-size:20px;
+                                    font-weight:bold;
+                                ">
+                                    Matérias identificadas
+                                </div>
+
+                                {noticias_html}
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td
+                                bgcolor="#111827"
+                                style="
+                                    padding:20px 30px;
+                                    background-color:#111827;
+                                    color:#D1D5DB;
+                                    text-align:center;
+                                    font-family:Arial,Helvetica,sans-serif;
+                                    font-size:12px;
+                                    line-height:19px;
+                                "
+                            >
+                                Mensagem gerada automaticamente pelo
+                                Monitor de Notícias CNN Brasil.<br>
+
+                                Gerado em:
+                                {agora_brasil.strftime("%d/%m/%Y %H:%M:%S")}
+                                | Fuso horário UTC-03:00
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+
+    return corpo_html
+
+
+# ================================================================
+# CRIAR EXCEL A PARTIR DE JSON
+# ================================================================
+
+def criar_excel_noticias(
+    noticias_filtradas,
+    data_desejada
+):
+
+    agora_brasil = datetime.now(
+        FUSO_BRASIL
+    )
+
+    identificador = agora_brasil.strftime(
+        "%Y-%m-%d_%H-%M-%S"
+    )
+
+    nome_json = (
+        "cnn_dados_"
+        + identificador
         + ".json"
     )
 
-    caminho = os.path.join(
-        tempfile.gettempdir(),
-        nome_arquivo
+    nome_excel = (
+        "Noticias_CNN_"
+        + identificador
+        + ".xlsx"
     )
 
-    dados_json = {
-        "fonte": "CNN Brasil",
-        "data_pesquisada": data_desejada,
-        "data_geracao": agora_brasil.strftime(
-            "%d/%m/%Y %H:%M:%S"
-        ),
-        "fuso_horario": "UTC-03:00",
-        "total_analisadas": total_analisadas,
-        "total_noticias": len(
-            noticias
-        ),
-        "temas_monitorados": TEMAS,
-        "noticias": noticias
-    }
+    caminho_json = os.path.join(
+        tempfile.gettempdir(),
+        nome_json
+    )
+
+    caminho_excel = os.path.join(
+        tempfile.gettempdir(),
+        nome_excel
+    )
+
+    dados_para_json = []
+
+    for noticia in noticias_filtradas:
+
+        dados_para_json.append({
+            "Data": noticia.get(
+                "data",
+                data_desejada
+            ),
+
+            "Hora": noticia.get(
+                "hora",
+                ""
+            ),
+
+            "Tema": noticia.get(
+                "tema",
+                ""
+            ),
+
+            "Palavras": noticia.get(
+                "palavras_encontradas",
+                ""
+            ),
+
+            "Titulo": noticia.get(
+                "titulo",
+                ""
+            ),
+
+            "Descrição": noticia.get(
+                "descricao",
+                ""
+            ),
+
+            "Categoria": noticia.get(
+                "categoria",
+                ""
+            ),
+
+            "Autor": noticia.get(
+                "autor",
+                ""
+            ),
+
+            "Publicado": noticia.get(
+                "publicado",
+                ""
+            ),
+
+            "Atualizado": noticia.get(
+                "atualizado",
+                ""
+            ),
+
+            "Imagem": noticia.get(
+                "imagem",
+                ""
+            ),
+
+            "Link": noticia.get(
+                "link",
+                ""
+            )
+        })
+
+    # ------------------------------------------------------------
+    # CRIAR JSON TEMPORARIO
+    # ------------------------------------------------------------
 
     with open(
-        caminho,
+        caminho_json,
         "w",
         encoding="utf-8"
-    ) as arquivo:
+    ) as arquivo_json:
 
         json.dump(
-            dados_json,
-            arquivo,
+            dados_para_json,
+            arquivo_json,
             ensure_ascii=False,
             indent=4
         )
 
-    return caminho
+    # ------------------------------------------------------------
+    # LER JSON TEMPORARIO
+    # ------------------------------------------------------------
+
+    with open(
+        caminho_json,
+        "r",
+        encoding="utf-8"
+    ) as arquivo_json:
+
+        dados_json = json.load(
+            arquivo_json
+        )
+
+    # ------------------------------------------------------------
+    # CRIAR EXCEL
+    # ------------------------------------------------------------
+
+    workbook = Workbook()
+
+    planilha = workbook.active
+    planilha.title = "Planilha1"
+
+    cabecalhos = [
+        "Data",
+        "Hora",
+        "Tema",
+        "Palavras",
+        "Titulo",
+        "Descrição",
+        "Categoria",
+        "Autor",
+        "Publicado",
+        "Atualizado",
+        "Imagem",
+        "Link"
+    ]
+
+    planilha.append(
+        cabecalhos
+    )
+
+    for registro in dados_json:
+
+        planilha.append([
+            registro.get("Data", ""),
+            registro.get("Hora", ""),
+            registro.get("Tema", ""),
+            registro.get("Palavras", ""),
+            registro.get("Titulo", ""),
+            registro.get("Descrição", ""),
+            registro.get("Categoria", ""),
+            registro.get("Autor", ""),
+            registro.get("Publicado", ""),
+            registro.get("Atualizado", ""),
+            registro.get("Imagem", ""),
+            registro.get("Link", "")
+        ])
+
+    # ------------------------------------------------------------
+    # ESTILOS
+    # ------------------------------------------------------------
+
+    preenchimento_cabecalho = PatternFill(
+        fill_type="solid",
+        fgColor="B71C1C"
+    )
+
+    fonte_cabecalho = Font(
+        name="Calibri",
+        size=11,
+        bold=True,
+        color="FFFFFF"
+    )
+
+    alinhamento_cabecalho = Alignment(
+        horizontal="center",
+        vertical="center",
+        wrap_text=True
+    )
+
+    borda_fina = Side(
+        style="thin",
+        color="D9D9D9"
+    )
+
+    borda = Border(
+        left=borda_fina,
+        right=borda_fina,
+        top=borda_fina,
+        bottom=borda_fina
+    )
+
+    # ------------------------------------------------------------
+    # FORMATAR CABECALHO
+    # Este bloco substitui a linha incorreta planilhacelula.fill.
+    # ------------------------------------------------------------
+
+    for linha_cabecalho in planilha.iter_rows(
+        min_row=1,
+        max_row=1,
+        min_col=1,
+        max_col=12
+    ):
+
+        for celula in linha_cabecalho:
+
+            celula.fill = preenchimento_cabecalho
+            celula.font = fonte_cabecalho
+            celula.alignment = alinhamento_cabecalho
+            celula.border = borda
+
+    planilha.row_dimensions[1].height = 28
+
+    ultima_linha = planilha.max_row
+
+    # ------------------------------------------------------------
+    # FORMATAR DADOS
+    # ------------------------------------------------------------
+
+    if ultima_linha >= 2:
+
+        for linha in planilha.iter_rows(
+            min_row=2,
+            max_row=ultima_linha,
+            min_col=1,
+            max_col=12
+        ):
+
+            for celula in linha:
+
+                celula.font = Font(
+                    name="Calibri",
+                    size=11
+                )
+
+                celula.alignment = Alignment(
+                    vertical="top",
+                    wrap_text=True
+                )
+
+                celula.border = borda
+
+            numero_linha = linha[0].row
+
+            planilha.row_dimensions[
+                numero_linha
+            ].height = 60
+
+    # ------------------------------------------------------------
+    # LARGURA DAS COLUNAS
+    # ------------------------------------------------------------
+
+    larguras = {
+        "A": 13,
+        "B": 11,
+        "C": 30,
+        "D": 35,
+        "E": 55,
+        "F": 70,
+        "G": 22,
+        "H": 30,
+        "I": 20,
+        "J": 20,
+        "K": 55,
+        "L": 55
+    }
+
+    for coluna, largura in larguras.items():
+
+        planilha.column_dimensions[
+            coluna
+        ].width = largura
+
+    # ------------------------------------------------------------
+    # FORMATAR DATA E HORA COMO TEXTO
+    # ------------------------------------------------------------
+
+    if ultima_linha >= 2:
+
+        for numero_linha in range(
+            2,
+            ultima_linha + 1
+        ):
+
+            planilha.cell(
+                row=numero_linha,
+                column=1
+            ).number_format = "@"
+
+            planilha.cell(
+                row=numero_linha,
+                column=2
+            ).number_format = "@"
+
+            planilha.cell(
+                row=numero_linha,
+                column=9
+            ).number_format = "@"
+
+            planilha.cell(
+                row=numero_linha,
+                column=10
+            ).number_format = "@"
+
+    # ------------------------------------------------------------
+    # LINKS CLICAVEIS
+    # ------------------------------------------------------------
+
+    if ultima_linha >= 2:
+
+        for numero_linha in range(
+            2,
+            ultima_linha + 1
+        ):
+
+            celula_imagem = planilha.cell(
+                row=numero_linha,
+                column=11
+            )
+
+            celula_link = planilha.cell(
+                row=numero_linha,
+                column=12
+            )
+
+            if (
+                isinstance(
+                    celula_imagem.value,
+                    str
+                )
+                and celula_imagem.value.startswith(
+                    ("http://", "https://")
+                )
+            ):
+
+                celula_imagem.hyperlink = (
+                    celula_imagem.value
+                )
+
+                celula_imagem.style = "Hyperlink"
+
+                celula_imagem.alignment = Alignment(
+                    vertical="top",
+                    wrap_text=True
+                )
+
+                celula_imagem.border = borda
+
+            if (
+                isinstance(
+                    celula_link.value,
+                    str
+                )
+                and celula_link.value.startswith(
+                    ("http://", "https://")
+                )
+            ):
+
+                celula_link.hyperlink = (
+                    celula_link.value
+                )
+
+                celula_link.style = "Hyperlink"
+
+                celula_link.alignment = Alignment(
+                    vertical="top",
+                    wrap_text=True
+                )
+
+                celula_link.border = borda
+
+    # ------------------------------------------------------------
+    # TABELA, FILTRO E CONGELAMENTO
+    # ------------------------------------------------------------
+
+    planilha.freeze_panes = "A2"
+
+    if ultima_linha >= 2:
+
+        intervalo_tabela = (
+            f"A1:L{ultima_linha}"
+        )
+
+        tabela = Table(
+            displayName="TabelaNoticiasCNN",
+            ref=intervalo_tabela
+        )
+
+        estilo_tabela = TableStyleInfo(
+            name="TableStyleMedium2",
+            showFirstColumn=False,
+            showLastColumn=False,
+            showRowStripes=True,
+            showColumnStripes=False
+        )
+
+        tabela.tableStyleInfo = estilo_tabela
+
+        planilha.add_table(
+            tabela
+        )
+
+    else:
+
+        planilha.auto_filter.ref = "A1:L1"
+
+    # ------------------------------------------------------------
+    # CONFIGURACOES DA PLANILHA
+    # ------------------------------------------------------------
+
+    planilha.sheet_view.showGridLines = False
+
+    planilha.page_setup.orientation = "landscape"
+    planilha.page_setup.fitToWidth = 1
+    planilha.page_setup.fitToHeight = 0
+
+    planilha.print_title_rows = "1:1"
+
+    planilha.sheet_properties.pageSetUpPr.fitToPage = True
+
+    planilha.page_margins.left = 0.25
+    planilha.page_margins.right = 0.25
+    planilha.page_margins.top = 0.5
+    planilha.page_margins.bottom = 0.5
+
+    # ------------------------------------------------------------
+    # SALVAR EXCEL
+    # ------------------------------------------------------------
+
+    workbook.save(
+        caminho_excel
+    )
+
+    workbook.close()
+
+    # ------------------------------------------------------------
+    # REMOVER JSON TEMPORARIO
+    # ------------------------------------------------------------
+
+    try:
+
+        if os.path.exists(
+            caminho_json
+        ):
+
+            os.remove(
+                caminho_json
+            )
+
+    except Exception as erro:
+
+        print()
+        print(
+            "Nao foi possivel remover o JSON temporario."
+        )
+
+        print(erro)
+
+    return caminho_excel
+
 
 # ================================================================
-# ENVIAR EMAIL PELO OUTLOOK CLASSICO
+# FUNCOES DO OUTLOOK
 # ================================================================
 
 def escapar_powershell(texto):
@@ -827,10 +2064,11 @@ def escapar_powershell(texto):
         "''"
     )
 
-def enviar_email_outlook(
+
+def enviar_email_outlook_html(
     destinatario,
     assunto,
-    corpo,
+    corpo_html,
     caminho_anexo
 ):
 
@@ -843,7 +2081,7 @@ def enviar_email_outlook(
     ):
 
         raise FileNotFoundError(
-            "Arquivo de anexo nao encontrado: "
+            "Arquivo Excel nao encontrado: "
             + caminho_anexo
         )
 
@@ -859,12 +2097,19 @@ def enviar_email_outlook(
         caminho_anexo
     )
 
-    # O corpo vai para um arquivo temporario para evitar
-    # problemas com quebras de linha no PowerShell.
+    nome_temporario = (
+        "cnn_corpo_email_"
+        + datetime.now(
+            FUSO_BRASIL
+        ).strftime(
+            "%Y%m%d_%H%M%S"
+        )
+        + ".html"
+    )
 
     caminho_corpo = os.path.join(
         tempfile.gettempdir(),
-        "cnn_corpo_email.txt"
+        nome_temporario
     )
 
     with open(
@@ -874,7 +2119,7 @@ def enviar_email_outlook(
     ) as arquivo:
 
         arquivo.write(
-            corpo
+            corpo_html
         )
 
     corpo_ps = escapar_powershell(
@@ -889,14 +2134,18 @@ $email = $outlook.CreateItem(0)
 
 $email.To = '{destinatario_ps}'
 $email.Subject = '{assunto_ps}'
-$email.Body = Get-Content -LiteralPath '{corpo_ps}' -Raw -Encoding UTF8
 
+$corpoHtml = Get-Content -LiteralPath '{corpo_ps}' -Raw -Encoding UTF8
+
+$email.HTMLBody = $corpoHtml
 $email.Attachments.Add('{anexo_ps}') | Out-Null
 
 $email.Send()
 
 Write-Output 'EMAIL_ENVIADO'
 """
+
+    resultado = None
 
     try:
 
@@ -932,6 +2181,12 @@ Write-Output 'EMAIL_ENVIADO'
 
             pass
 
+    if resultado is None:
+
+        raise RuntimeError(
+            "O PowerShell nao foi executado."
+        )
+
     if resultado.returncode != 0:
 
         mensagem_erro = (
@@ -952,62 +2207,6 @@ Write-Output 'EMAIL_ENVIADO'
 
     return True
 
-# ================================================================
-# MONTAR CORPO DO EMAIL
-# ================================================================
-
-def montar_corpo_email(
-    data_desejada,
-    total_analisadas,
-    noticias_filtradas
-):
-
-    contagem_temas = {}
-
-    for tema in TEMAS:
-
-        contagem_temas[tema] = sum(
-            1
-            for noticia in noticias_filtradas
-            if tema in noticia.get(
-                "tema",
-                ""
-            )
-        )
-
-    linhas = [
-        "Bom dia,",
-        "",
-        "Segue o resultado da consulta automatizada realizada "
-        "no portal CNN Brasil.",
-        "",
-        f"Data da consulta: {data_desejada}",
-        f"Materias analisadas: {total_analisadas}",
-        (
-            "Noticias relevantes encontradas: "
-            f"{len(noticias_filtradas)}"
-        ),
-        "",
-        "Resumo por tema:"
-    ]
-
-    for tema, quantidade in contagem_temas.items():
-
-        linhas.append(
-            f"- {tema}: {quantidade}"
-        )
-
-    linhas.extend([
-        "",
-        "O arquivo JSON anexado contem os titulos, descricoes, "
-        "categorias, autores, datas, imagens e links das noticias.",
-        "",
-        "Mensagem gerada automaticamente pelo Monitor de Noticias CNN."
-    ])
-
-    return "\n".join(
-        linhas
-    )
 
 # ================================================================
 # BUSCA PRINCIPAL
@@ -1045,15 +2244,6 @@ def buscar_noticias(
         "Noticias encontradas:",
         total
     )
-
-    if total == 0:
-
-        print()
-        print(
-            "Nenhuma noticia foi encontrada para a data atual."
-        )
-
-        return True
 
     print()
     print(
@@ -1126,29 +2316,43 @@ def buscar_noticias(
 
         noticias_filtradas.append({
             "data": noticia["data"],
+
             "hora": noticia["hora"],
+
             "tema": ", ".join(
                 temas
             ),
+
             "palavras_encontradas": ", ".join(
                 palavras
             ),
+
             "titulo": titulo,
+
             "descricao": (
                 descricao
                 or "Nao informado"
             ),
+
             "categoria": (
                 detalhes["categoria"]
                 or "Nao informado"
             ),
+
             "autor": (
                 detalhes["autor"]
                 or "Nao informado"
             ),
+
             "publicado": publicado,
+
             "atualizado": atualizado,
-            "imagem": detalhes["imagem"],
+
+            "imagem": (
+                detalhes["imagem"]
+                or ""
+            ),
+
             "link": noticia["link"]
         })
 
@@ -1179,7 +2383,11 @@ def buscar_noticias(
         print()
         print("-" * 80)
         print(f"NOTICIA {numero}")
-        print("Tema:", noticia["tema"])
+
+        print(
+            "Tema:",
+            noticia["tema"]
+        )
 
         print(
             "Palavras:",
@@ -1196,33 +2404,69 @@ def buscar_noticias(
             noticia["link"]
         )
 
-    # O JSON sera criado mesmo se nenhuma materia
-    # passar pelos filtros.
+    # ------------------------------------------------------------
+    # MONTAR HTML
+    # ------------------------------------------------------------
 
-    arquivo_json = criar_json_temporario(
-        noticias=noticias_filtradas,
-        data_desejada=data_desejada,
-        total_analisadas=total
-    )
-
-    corpo = montar_corpo_email(
+    corpo_html = montar_corpo_email_html(
         data_desejada=data_desejada,
         total_analisadas=total,
         noticias_filtradas=noticias_filtradas
     )
 
+    # ------------------------------------------------------------
+    # CRIAR EXCEL
+    # ------------------------------------------------------------
+
     try:
 
         print()
         print(
-            "Enviando email pelo Outlook classico..."
+            "Criando arquivo Excel..."
         )
 
-        enviar_email_outlook(
+        arquivo_excel = criar_excel_noticias(
+            noticias_filtradas=noticias_filtradas,
+            data_desejada=data_desejada
+        )
+
+        print()
+        print(
+            "Arquivo Excel criado:",
+            os.path.basename(
+                arquivo_excel
+            )
+        )
+
+    except Exception as erro:
+
+        print()
+        print("=" * 80)
+        print("ERRO AO CRIAR O EXCEL")
+        print("=" * 80)
+
+        print()
+        print(erro)
+
+        return False
+
+    # ------------------------------------------------------------
+    # ENVIAR EMAIL
+    # ------------------------------------------------------------
+
+    try:
+
+        print()
+        print(
+            "Enviando email HTML com Excel "
+            "pelo Outlook classico..."
+        )
+
+        enviar_email_outlook_html(
             destinatario=DESTINATARIO_EMAIL,
             assunto=ASSUNTO_EMAIL,
-            corpo=corpo,
-            caminho_anexo=arquivo_json
+            corpo_html=corpo_html,
+            caminho_anexo=arquivo_excel
         )
 
         print()
@@ -1241,9 +2485,16 @@ def buscar_noticias(
         )
 
         print(
-            "Anexo:",
+            "Materias inseridas no corpo:",
+            len(
+                noticias_filtradas
+            )
+        )
+
+        print(
+            "Excel anexado:",
             os.path.basename(
-                arquivo_json
+                arquivo_excel
             )
         )
 
@@ -1259,43 +2510,46 @@ def buscar_noticias(
 
         print()
         print(
-            "O JSON foi mantido para verificacao em:"
+            "O arquivo Excel foi mantido para verificacao em:"
         )
 
         print(
-            arquivo_json
+            arquivo_excel
         )
 
         return False
 
-    # Remover JSON somente quando o Outlook confirmar o envio.
+    # ------------------------------------------------------------
+    # REMOVER EXCEL DEPOIS DO ENVIO
+    # ------------------------------------------------------------
 
     try:
 
         if os.path.exists(
-            arquivo_json
+            arquivo_excel
         ):
 
             os.remove(
-                arquivo_json
+                arquivo_excel
             )
 
             print()
             print(
-                "Arquivo JSON temporario removido."
+                "Arquivo Excel temporario removido."
             )
 
     except Exception as erro:
 
         print()
         print(
-            "O email foi enviado, mas o JSON "
+            "O email foi enviado, mas o Excel "
             "temporario nao foi removido."
         )
 
         print(erro)
 
     return True
+
 
 # ================================================================
 # PROGRAMA PRINCIPAL
@@ -1372,7 +2626,7 @@ def main():
             "O programa terminou com erro."
         )
 
+
 if __name__ == "__main__":
 
     main()
-
