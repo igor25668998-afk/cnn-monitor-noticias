@@ -1,10 +1,10 @@
 {
     "fonte": "CNN Brasil",
     "data_pesquisada": "26/11/2026",
-    "data_geracao": "26/11/2026 07:29:06",
+    "data_geracao": "26/11/2026 16:47:50",
     "fuso_horario": "UTC-03:00",
-    "total_analisadas": 0,
-    "total_noticias": 0,
+    "total_analisadas": 24,
+    "total_noticias": 6,
     "temas_monitorados": {
         "Seguranca": [
             "polícia",
@@ -44,5 +44,90 @@
             "inteligência artificial"
         ]
     },
-    "noticias": []
+    "noticias": [
+        {
+            "data": "26/11/2026",
+            "hora": "04:10",
+            "tema": "Tecnologia e Seguranca Digital",
+            "palavras_encontradas": "inteligência artificial",
+            "titulo": "Queda nas ações de tecnologia continua, impulsionada por temores com IA",
+            "descricao": "Reintegração de Jensen Huang ao comando da empresa provocou alta momentânea, mas temores sobre retornos financeiros da inteligência artificial prevaleceram",
+            "categoria": "Inteligência Artificial",
+            "autor": "John Towfighi, Anna Cooban",
+            "publicado": "26/11/2026 04:10",
+            "atualizado": "25/11/2026 20:36",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2026/11/Mao-Robotica-em-Queda-Financeira.png?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/economia/money/inteligencia-artificial/queda-nas-acoes-de-tecnologia-continua-impulsionada-por-temores-com-ia/"
+        },
+        {
+            "data": "26/11/2026",
+            "hora": "03:33",
+            "tema": "Desastres e Operacoes",
+            "palavras_encontradas": "alagamento, temporal",
+            "titulo": "Brasil emite alerta laranja de tempestade para o Centro-Oeste e Sudeste",
+            "descricao": "Previsão é de chuva com acumulados de 100 milímetros ao longo do dia, ventos de até 100 km/h e queda de granizo; áreas de SP, RJ, ES, MG, GO e MS estão sob aviso",
+            "categoria": "Sudeste",
+            "autor": "Julia Naspolini",
+            "publicado": "26/11/2026 03:33",
+            "atualizado": "25/11/2026 20:46",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2026/11/alerta-inmet-3.png?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/nacional/sudeste/brasil-emite-alerta-laranja-de-tempestade-para-o-centro-oeste-e-sudeste/"
+        },
+        {
+            "data": "26/11/2026",
+            "hora": "03:29",
+            "tema": "Logistica, Tecnologia e Seguranca Digital",
+            "palavras_encontradas": "bloqueio, inteligência artificial",
+            "titulo": "Elon Musk promete duas ações da SpaceX para cada criança nos EUA",
+            "descricao": "Doação avaliada em US$ 18 bilhões será dividida entre papéis da empresa e participação pessoal do bilionário",
+            "categoria": "Tecnologia",
+            "autor": "Gnaneshwar Rajan",
+            "publicado": "26/11/2026 03:29",
+            "atualizado": "26/11/2026 03:33",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2026/06/WhatsApp-Image-2026-06-12-at-10.36.10.jpeg?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/economia/money/tecnologia/elon-musk-promete-duas-acoes-da-spacex-para-cada-crianca-nos-eua-entenda/"
+        },
+        {
+            "data": "26/11/2026",
+            "hora": "02:50",
+            "tema": "Seguranca",
+            "palavras_encontradas": "polícia",
+            "titulo": "\"Tentativa de me intimidar\", diz Gustavo Gayer sobre denúncia da PGR",
+            "descricao": "Parlamentar é acusado de desvio de recursos, uso de documento falso e associação criminosa; Alexandre de Moraes dá prazo de 15 dias para a apresentação da defesa",
+            "categoria": "Política",
+            "autor": "Daniel Seiti",
+            "publicado": "26/11/2026 02:50",
+            "atualizado": "26/11/2026 02:50",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2024/10/gustavo-gayer-twitter.png?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/politica/tentativa-de-me-intimidar-diz-gustavo-gayer-sobre-denuncia-da-pgr/"
+        },
+        {
+            "data": "26/11/2026",
+            "hora": "01:13",
+            "tema": "Desastres e Operacoes, Logistica",
+            "palavras_encontradas": "acidente, aeroporto",
+            "titulo": "Avião da FedEx sai da pista e provoca atrasos no aeroporto de Miami",
+            "descricao": "Aeronave cargueira parou em uma área gramada; ocorrência suspendeu operações temporariamente, mas não deixou feridos",
+            "categoria": "Internacional",
+            "autor": "Aaron Cooper",
+            "publicado": "26/11/2026 01:13",
+            "atualizado": "26/11/2026 05:56",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2026/11/2026-11-26T034632Z_1_LOP136726112026RP1_RTRMADP_BASEIMAGE-960X540_USA-PLANE-FLORIDA.jpg?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/internacional/aviao-da-fedex-sai-da-pista-e-provoca-atrasos-em-aeroporto-de-miami/"
+        },
+        {
+            "data": "26/11/2026",
+            "hora": "00:53",
+            "tema": "Desastres e Operacoes, Logistica",
+            "palavras_encontradas": "incêndio, explosão, acidente, rodovia",
+            "titulo": "Explosão de caminhão-tanque provoca incêndio e deixa 31 mortos no Egito",
+            "descricao": "Acidente destruiu 27 veículos nos arredores do Cairo; outras 21 pessoas ficaram feridas e foram levadas a hospitais",
+            "categoria": "Internacional",
+            "autor": "Mohammed Tawfeeq",
+            "publicado": "26/11/2026 00:53",
+            "atualizado": "26/11/2026 06:10",
+            "imagem": "https://admin.cnnbrasil.com.br/wp-content/uploads/sites/12/2026/11/cnn-L19jb21wb25lbnRzL2ltYWdlL2luc3RhbmNlcy9jbXd3ZzRranYwMGN1MjdvdzJ1bTE4eXkx-L19jb21wb25lbnRzL2FydGljbGUvaW5zdGFuY2VzL2Ntd3dnNGtqdjAwY3YyN293Nnk2c2R5Y2M.jpg?w=1200&h=1200&crop=1",
+            "link": "https://www.cnnbrasil.com.br/internacional/explosao-de-caminhao-tanque-provoca-incendio-e-deixa-mortos-no-egito/"
+        }
+    ]
 }
